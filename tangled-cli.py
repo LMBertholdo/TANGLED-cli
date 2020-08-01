@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # coding: utf-8
 ###############################################################################
 # Testbed CLI - interface for exabgpcli
@@ -7,6 +7,7 @@
 # @copyright paaddos.nl - Leandro Bertholdo - leandro.bertholdo@gmail.com
 ###############################################################################
 # 24Apr20 v0.20 - Included br-gru-anycast01
+# 01Aug20 v0.21 - Included nl-ams-anycast01
 ###############################################################################
 
 ###############################################################################
