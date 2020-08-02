@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 ###############################################################################
 # Testbed CLI - interface for exabgpcli
@@ -7,7 +7,6 @@
 # @copyright paaddos.nl - Leandro Bertholdo - leandro.bertholdo@gmail.com
 ###############################################################################
 # 24Apr20 v0.20 - Included br-gru-anycast01
-# 01Aug20 v0.21 - Included nl-ams-anycast01
 ###############################################################################
 
 ###############################################################################
@@ -20,8 +19,9 @@ import os
 import sys
 import argparse
 from os import linesep
-#import imp
-import importlib
+import imp
+import signal
+import cursor
 ###############################################################################
 ### Program settings
 
@@ -38,8 +38,8 @@ nodes = {
           "fr-par-anycast01" : "45.32.151.68",
           "jp-hnd-anycast01" : "203.178.148.30",
           "nl-arn-anycast01" : "193.176.144.173",
-          "nl-ens-anycast02" : "192.87.172.193",
           "nl-ams-anycast01" : "136.244.104.73",
+          "nl-ens-anycast02" : "192.87.172.193",
           "uk-lnd-anycast02" : "108.61.172.212",
           "us-mia-anycast01" : "198.32.252.97",
           "us-was-anycast01" : "128.9.63.135",
@@ -75,6 +75,12 @@ def connect(node):
         return (None)
 
     return (ssh)
+
+#------------------------------------------------------------------------------
+def signal_handler(sig, frame):
+    print('Ctrl+C detected.')
+    cursor.show()
+    sys.exit(0)
 
 #------------------------------------------------------------------------------
 def run_cmd(node,cmd):
@@ -235,7 +241,8 @@ def evaluate_args():
 ###############################################################################
 ### Main Process
 
-try:
+if __name__ == '__main__':
+    signal.signal(signal.SIGINT, signal_handler)
     available_nodes = list(nodes.keys())
     args = evaluate_args()
     logging.debug(args)
@@ -275,6 +282,8 @@ try:
             # announce found
             for announces in output:
                 cmd = "exabgpcli neighbor {} {} ".format(announces['ip'],announces['cmd'])
+                print (cmd)
+                break
                 if (args.v4):
                     if (':' not in announces['ip']):
                         print ("IPv4 withdraw... done!")
@@ -458,6 +467,4 @@ try:
             label = "#ipv6,"
         lst = ",".join(list(set(sites)))
         print (label+lst)
-except KeyboardInterrupt:   
-    print('Interrupted')
 sys.exit(0)
