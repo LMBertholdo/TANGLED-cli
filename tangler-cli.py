@@ -19,14 +19,14 @@ import os
 import sys
 import argparse
 from os import linesep
-import imp
+import importlib as imp
 import signal
 import cursor
 ###############################################################################
 ### Program settings
 
 verbose = False
-version = 0.19
+version = 0.21
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
