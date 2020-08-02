@@ -6,7 +6,7 @@
 # @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
 # @copyright paaddos.nl - Leandro Bertholdo - leandro.bertholdo@gmail.com
 ###############################################################################
-# 24Apr20 v0.21 - Included br-gru-anycast01
+# 24Apr20 v0.22 - Included br-gru-anycast01
 ###############################################################################
 
 ###############################################################################
@@ -26,7 +26,7 @@ import cursor
 ### Program settings
 
 verbose = False
-version = 0.21
+version = 0.22
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
