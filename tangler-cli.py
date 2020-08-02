@@ -6,7 +6,7 @@
 # @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
 # @copyright paaddos.nl - Leandro Bertholdo - leandro.bertholdo@gmail.com
 ###############################################################################
-# 24Apr20 v0.20 - Included br-gru-anycast01
+# 24Apr20 v0.21 - Included br-gru-anycast01
 ###############################################################################
 
 ###############################################################################
