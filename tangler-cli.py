@@ -271,19 +271,11 @@ if __name__ == '__main__':
             output = parse_routes(output_)
             if not output:
                 logging.info("there is nothing announced in {}".format(node))
-            else:
-                if (args.v4):
-                    print ("IPv4 withdraw... done!")
-                elif (args.v6):
-                    print ("IPv6 withdraw... done!")
-                else:
-                    print ("withdraw... done!")
-    
+
             # announce found
             for announces in output:
                 cmd = "exabgpcli neighbor {} {} ".format(announces['ip'],announces['cmd'])
                 print (cmd)
-                break
                 if (args.v4):
                     if (':' not in announces['ip']):
                         print ("IPv4 withdraw... done!")
