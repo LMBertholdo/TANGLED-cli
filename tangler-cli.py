@@ -7,6 +7,7 @@
 # @copyright paaddos.nl - Leandro Bertholdo - leandro.bertholdo@gmail.com
 ###############################################################################
 # 24Apr20 v0.22 - Included br-gru-anycast01
+# 23Sep20 v0.23 - changed poa and los
 ###############################################################################
 
 ###############################################################################
@@ -33,7 +34,7 @@ program_name = sys.argv[0][:-3]
 nodes = {
           "au-syd-anycast01" : "108.61.185.44",
           "br-gru-anycast01" : "200.136.41.30",
-          "br-poa-anycast01" : "177.184.254.162",
+          "br-poa-anycast02" : "177.184.254.162",
           "dk-cop-anycast01" : "193.163.102.207",
           "fr-par-anycast01" : "45.32.151.68",
           "jp-hnd-anycast01" : "203.178.148.30",
