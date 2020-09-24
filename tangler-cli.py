@@ -27,7 +27,7 @@ import cursor
 ### Program settings
 
 verbose = False
-version = 0.23
+version = 0.231
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
