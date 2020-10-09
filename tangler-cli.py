@@ -28,7 +28,7 @@ import cursor
 ### Program settings
 
 verbose = False
-version = 0.24
+version = 0.25
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
@@ -49,6 +49,8 @@ nodes = {
           "de-fra-anycast01" : "95.179.245.34",
           "us-sea-anycast01" : "137.220.39.22",
           "sg-sin-anycast01" : "139.180.131.134",
+          "br-gig-anycast01" : "152.84.200.22",
+          "za-jnb-anycast01" : "196.251.250.248",
 }
 
 ###############################################################################
