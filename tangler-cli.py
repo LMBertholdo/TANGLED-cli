@@ -9,6 +9,8 @@
 # 24Apr20 v0.22 - Included br-gru-anycast01
 # 23Sep20 v0.23 - changed poa and los
 # 24Sep20 v0.24 - added de-fra, us-sea, sg-sin
+# 10Oct20 v0.26 - added za-jnb br-gig
+# 13Oct20 v0.26 - commented br-gig
 ###############################################################################
 
 ###############################################################################
@@ -28,7 +30,7 @@ import cursor
 ### Program settings
 
 verbose = False
-version = 0.25
+version = 0.26
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
@@ -49,8 +51,8 @@ nodes = {
           "de-fra-anycast01" : "95.179.245.34",
           "us-sea-anycast01" : "137.220.39.22",
           "sg-sin-anycast01" : "139.180.131.134",
-          "br-gig-anycast01" : "152.84.200.22",
           "za-jnb-anycast01" : "196.251.250.248",
+#          "br-gig-anycast01" : "152.84.200.22",
 }
 
 ###############################################################################
