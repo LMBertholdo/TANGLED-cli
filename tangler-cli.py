@@ -30,7 +30,7 @@ import cursor
 ### Program settings
 
 verbose = False
-version = 0.26
+version = 0.27
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
@@ -72,11 +72,16 @@ def connect(node):
         print ("check available nodes")
      
     key = args.key
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    try:
-        ssh.connect(ip, username=user)
+    logging.info("connect:: user[%s] ip[%s] key[%s]", user, ip, key)
 
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(ip, username=user)
+    except ssh_exception.NoValidConnectionsError as inst:
+        print("username not exists")
+    except ssh_exception.AuthenticationException as inst:
+        print("passwd not correct")
     except Exception as inst:
         print ("Could not connect in node {}".format(node.upper()))
         print ("Ignoring node {}".format(node.upper()))
@@ -93,16 +98,19 @@ def signal_handler(sig, frame):
 
 #------------------------------------------------------------------------------
 def run_cmd(node,cmd):
-    """ Run a cmd using the stablished SSH session
+    """ Run a cmd using the established SSH session
         param node: name (string) that represent the node (see dic)
         return: array of lines
     """
-
+    logging.info("run_cmd::going to connect [%s]", node)
     ssh = connect(node)
+    logging.debug("run_cmd::after connect")
     if (not ssh):
         return (None)
 
     shell = ssh.invoke_shell()
+    logging.debug("run_cmd::after invoke_shell")
+
     shell.settimeout(3)
     stdin, stdout, stderr = ssh.exec_command(cmd)
     opt = stdout.readlines()
@@ -200,7 +208,7 @@ def evaluate_args():
         logging.debug(args)
 
     if (args.verbose):
-        set_log_level()
+        set_log_level('INFO')
         logging.debug(args)
 
     if (args.version):
@@ -255,19 +263,25 @@ if __name__ == '__main__':
     available_nodes = list(nodes.keys())
     args = evaluate_args()
     logging.debug(args)
-    
+
+    logging.warning("Started on [ %d ] Nodes", len(nodes))
+    logging.info("Started on [ %s ]", nodes)
+
     if (args.status):
         # check status
-        
         for node in args.target:
-            #print ("working on {}".format(node))
+            logging.warning ("working on Status of [ %s ]", format(node))
             cmd = "exabgpcli show neighbor summary"
+            logging.info("### vair rodar [%s]", cmd)
             output = run_cmd(node,cmd)
+            logging.info("roodou e vai parsear")
             if (not output):
                 continue;
             output = parse_peers(output)
+            logging.info("parseou --> %s",output)
             logging.debug(output)
             #print ("#testbed node: {}".format(node.upper()))
+
             for neighbor in output:
                 #print ("\t{} - {} - {} ".format(node, neighbor['ip'], neighbor['status']))
                 print ("{},{},{}".format(node, neighbor['ip'], neighbor['status']))
@@ -304,6 +318,7 @@ if __name__ == '__main__':
     # check all the announces for specific nodes
     elif (args.announces):
         for node in args.target:
+            logging.warning ("working on Announces of [ %s ]", format(node))
             cmd = " exabgpcli show adj-rib out extensive"
             output = run_cmd(node,cmd)
             if (not output):
@@ -355,7 +370,8 @@ if __name__ == '__main__':
     # add route (prefix) in BGP
     elif (args.add):
         for node in args.target:
-            logging.info("finding neighbor for {}".format(node))
+            logging.warning ("Finding neighbor of [ %s ]", format(node))
+            logging.info("finding neighbor for %s", node)
             cmd = "exabgpcli show neighbor summary"
             output = run_cmd(node,cmd)
             if (not output):
@@ -468,4 +484,9 @@ if __name__ == '__main__':
             label = "#ipv6,"
         lst = ",".join(list(set(sites)))
         print (label+lst)
+
+#    except KeyboardInterrupt:
+#        print('Interrupted')
 sys.exit(0)
+
+### END  ###
