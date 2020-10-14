@@ -30,7 +30,7 @@ import cursor
 ### Program settings
 
 verbose = False
-version = 0.27
+version = 0.28
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
@@ -270,7 +270,7 @@ if __name__ == '__main__':
     if (args.status):
         # check status
         for node in args.target:
-            logging.warning ("working on Status of [ %s ]", format(node))
+            logging.info ("working on Status of [ %s ]", format(node))
             cmd = "exabgpcli show neighbor summary"
             logging.info("### vair rodar [%s]", cmd)
             output = run_cmd(node,cmd)
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     # check all the announces for specific nodes
     elif (args.announces):
         for node in args.target:
-            logging.warning ("working on Announces of [ %s ]", format(node))
+            logging.info ("working on Announces of [ %s ]", format(node))
             cmd = " exabgpcli show adj-rib out extensive"
             output = run_cmd(node,cmd)
             if (not output):
@@ -370,7 +370,6 @@ if __name__ == '__main__':
     # add route (prefix) in BGP
     elif (args.add):
         for node in args.target:
-            logging.warning ("Finding neighbor of [ %s ]", format(node))
             logging.info("finding neighbor for %s", node)
             cmd = "exabgpcli show neighbor summary"
             output = run_cmd(node,cmd)
