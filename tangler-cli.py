@@ -11,6 +11,7 @@
 # 24Sep20 v0.24 - added de-fra, us-sea, sg-sin
 # 10Oct20 v0.26 - added za-jnb br-gig
 # 13Oct20 v0.26 - commented br-gig
+# 22Oct20 v0.29 - added -w[all|route]
 ###############################################################################
 
 ###############################################################################
@@ -30,7 +31,7 @@ import cursor
 ### Program settings
 
 verbose = False
-version = 0.28
+version = 0.29
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
@@ -102,7 +103,7 @@ def run_cmd(node,cmd):
         param node: name (string) that represent the node (see dic)
         return: array of lines
     """
-    logging.info("run_cmd::going to connect [%s]", node)
+    logging.debug("run_cmd::going to connect [%s]", node)
     ssh = connect(node)
     logging.debug("run_cmd::after connect")
     if (not ssh):
@@ -118,21 +119,27 @@ def run_cmd(node,cmd):
     return(opt)
 
 #------------------------------------------------------------------------------
-def parse_routes(output):
+def parse_withdraw_routes(output):
     """ Parse the output from the command show neighbor adj-out
         param: output
         return: dictionary of peer and respective status
     """ 
     peer = []
     status = []
+    result = []
     for line in (output):
-        route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*)', line, re.IGNORECASE)
-        result = {
-            "ip": route_search.group(1),
-            "cmd" : "withdraw route "+route_search.group(2)
-        }
-        peer.append(result)
+        route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*?)\s+next-hop self\s+(.*)',line,re.IGNORECASE)
+        #route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*)', line, re.IGNORECASE)
 
+        if ( not args.route or args.route == route_search.group(2)):
+            result = {
+                "ip": route_search.group(1),
+                "cmd" : "withdraw route "+route_search.group(2)
+                }
+            peer.append(result)
+
+        else:
+            logging.debug("Route [%s] for withdraw not found on peer [%s] route [%s]", args.route, route_search.group(1), route_search.group(2))
     return (peer)
 
 #------------------------------------------------------------------------------
@@ -188,12 +195,12 @@ def parser_args ():
     parser.add_argument("-a","--announces", help="active announces", action="store_true")
     parser.add_argument('-t','--target', nargs='?', help="target [node|all]")
     parser.add_argument('-c','--cmd', nargs='?', help="cmd to be executed")
-    parser.add_argument('-A', help="add specific route to peers",action="store_true",dest="add")
+    parser.add_argument('-A', help="announce routes [-r] to a target [-t] or all nodes/routes (default) ",action="store_true",dest="add")
     parser.add_argument('-P', nargs='?', help="number of prepends",dest="prepend")
     parser.add_argument('-r', nargs='?', help="BGP route to be added",dest="route")
     parser.add_argument('--key', nargs='?', help="SSH key present on the testbed",dest="key", default= "~/.ssh/id_ed25519")
     parser.add_argument('--user', nargs='?', help="SSH user used to login on the testbed",dest="user", default="testbed")
-    parser.add_argument("-w", help="withdraw all routes for that peer", action="store_true",dest="withdraw")
+    parser.add_argument("-w", help="withdraw routes [-r] from a target [-t] or all nodes/routes (default) ", action="store_true",dest="withdraw")
     parser.add_argument("--nodes-with-announces", help="list the name of nodes with active prefix announcement", action="store_true",dest="listnodesannounce")
     return parser
 
@@ -202,6 +209,10 @@ def parser_args ():
 def evaluate_args():
     parser = parser_args()
     args = parser.parse_args()
+
+    # Default is just v4
+    if (not args.v6):
+        args.v4 = True
 
     if (args.debug):
         set_log_level('DEBUG')
@@ -264,7 +275,7 @@ if __name__ == '__main__':
     args = evaluate_args()
     logging.debug(args)
 
-    logging.warning("Started on [ %d ] Nodes", len(nodes))
+    print("Started on [ {} ] Nodes".format(len(nodes)))
     logging.info("Started on [ %s ]", nodes)
 
     if (args.status):
@@ -272,13 +283,13 @@ if __name__ == '__main__':
         for node in args.target:
             logging.info ("working on Status of [ %s ]", format(node))
             cmd = "exabgpcli show neighbor summary"
-            logging.info("### vair rodar [%s]", cmd)
+            logging.debug("### Go Run cmd[%s]", cmd)
             output = run_cmd(node,cmd)
-            logging.info("roodou e vai parsear")
+            logging.debug("Now parse ")
             if (not output):
                 continue;
             output = parse_peers(output)
-            logging.info("parseou --> %s",output)
+            logging.debug("parsed --> %s",output)
             logging.debug(output)
             #print ("#testbed node: {}".format(node.upper()))
 
@@ -287,13 +298,13 @@ if __name__ == '__main__':
                 print ("{},{},{}".format(node, neighbor['ip'], neighbor['status']))
     
     elif (args.withdraw):
-    
+        logging.info("withdraw [%s] from [%s]", args.route, args.target)
         for node in args.target:
             cmd = " exabgpcli show adj-rib out extensive"
             output_ = run_cmd(node,cmd)
-            output = parse_routes(output_)
+            output = parse_withdraw_routes(output_)
             if not output:
-                logging.info("there is nothing announced in {}".format(node))
+                logging.info("there is nothing announced in {} to withdraw".format(node))
 
             # announce found
             for announces in output:
@@ -309,7 +320,6 @@ if __name__ == '__main__':
                     if (':' in announces['ip']):
                         output = run_cmd(node,cmd)
                         logging.info(output)
-    
                 # run for both
                 else:
                     output = run_cmd(node,cmd)
