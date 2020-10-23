@@ -11,7 +11,7 @@
 # 24Sep20 v0.24 - added de-fra, us-sea, sg-sin
 # 10Oct20 v0.26 - added za-jnb br-gig
 # 13Oct20 v0.26 - commented br-gig
-# 22Oct20 v0.29 - added -w[all|route]
+# 22Oct20 v0.30 - added -w[all|route]
 ###############################################################################
 
 ###############################################################################
@@ -31,7 +31,7 @@ import cursor
 ### Program settings
 
 verbose = False
-version = 0.29
+version = 0.30
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
@@ -275,7 +275,6 @@ if __name__ == '__main__':
     args = evaluate_args()
     logging.debug(args)
 
-    print("Started on [ {} ] Nodes".format(len(nodes)))
     logging.info("Started on [ %s ]", nodes)
 
     if (args.status):
