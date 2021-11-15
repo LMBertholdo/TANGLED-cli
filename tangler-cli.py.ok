@@ -11,15 +11,8 @@
 # 24Sep20 v0.24 - added de-fra, us-sea, sg-sin
 # 10Oct20 v0.26 - added za-jnb br-gig
 # 13Oct20 v0.26 - commented br-gig
-# 22Oct20 v0.30 - added -w[all|route]
-# 28Nov20 v0.31 - garbage collection at paramiko (del ssh,stdin,stdout, stderr)
-# 19Jan21 v0.32 - error exception bug on paramiko 
-# 15Nov21 v0.33 - error exception bug on paramiko and removed br-gig, jp-hnd
-
-
+# 22Oct20 v0.29 - added -w[all|route]
 ###############################################################################
-version = 0.33
-verbose = False
 
 ###############################################################################
 ### Python modules
@@ -37,6 +30,8 @@ import cursor
 ###############################################################################
 ### Program settings
 
+verbose = False
+version = 0.29
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
@@ -46,7 +41,7 @@ nodes = {
           "br-poa-anycast02" : "177.184.254.162",
           "dk-cop-anycast01" : "193.163.102.207",
           "fr-par-anycast01" : "45.32.151.68",
-#          "jp-hnd-anycast01" : "203.178.148.30",
+          "jp-hnd-anycast01" : "203.178.148.30",
           "nl-arn-anycast01" : "193.176.144.173",
           "nl-ams-anycast01" : "136.244.104.73",
           "nl-ens-anycast02" : "192.87.172.193",
@@ -84,17 +79,14 @@ def connect(node):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(ip, username=user)
-    except paramiko.ssh_exception.NoValidConnectionsError as inst:
-        print("username [{}] not exists".format(user))
-    except paramiko.ssh_exception.AuthenticationException as inst:
-        print("-->> Key or password are not correct ({},{},{},{})".format(node.upper(),ip,user.upper(),key))
-        #print("-->> more info on except inst: [{}][{}][{}])".format(type(inst),inst,inst.args))
-    except paramiko.ssh_exception.BadHostKeyException as inst:
-        print("Unable to verify server's host key: {}".format(inst))
+    except ssh_exception.NoValidConnectionsError as inst:
+        print("username not exists")
+    except ssh_exception.AuthenticationException as inst:
+        print("passwd not correct")
     except Exception as inst:
         print ("Could not connect in node {}".format(node.upper()))
         print ("Ignoring node {}".format(node.upper()))
-        print("SSH exception:",type(inst),inst)
+        print(inst)   
         return (None)
 
     return (ssh)
@@ -123,35 +115,25 @@ def run_cmd(node,cmd):
     shell.settimeout(3)
     stdin, stdout, stderr = ssh.exec_command(cmd)
     opt = stdout.readlines()
-
-    # Clean up elements - for some reason, garbage is not cleared at close() so need delete elements
     ssh.close()
-    del ssh, stdin, stdout, stderr
-
     return(opt)
 
 #------------------------------------------------------------------------------
-def parse_withdraw_routes(output):
+def parse_routes(output):
     """ Parse the output from the command show neighbor adj-out
         param: output
         return: dictionary of peer and respective status
     """ 
     peer = []
     status = []
-    result = []
     for line in (output):
-        route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*?)\s+next-hop self\s+(.*)',line,re.IGNORECASE)
-        #route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*)', line, re.IGNORECASE)
+        route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*)', line, re.IGNORECASE)
+        result = {
+            "ip": route_search.group(1),
+            "cmd" : "withdraw route "+route_search.group(2)
+        }
+        peer.append(result)
 
-        if ( not args.route or args.route == route_search.group(2)):
-            result = {
-                "ip": route_search.group(1),
-                "cmd" : "withdraw route "+route_search.group(2)
-                }
-            peer.append(result)
-
-        else:
-            logging.debug("Route [%s] for withdraw not found on peer [%s] route [%s]", args.route, route_search.group(1), route_search.group(2))
     return (peer)
 
 #------------------------------------------------------------------------------
@@ -207,12 +189,12 @@ def parser_args ():
     parser.add_argument("-a","--announces", help="active announces", action="store_true")
     parser.add_argument('-t','--target', nargs='?', help="target [node|all]")
     parser.add_argument('-c','--cmd', nargs='?', help="cmd to be executed")
-    parser.add_argument('-A', help="announce routes [-r] to a target [-t] or all nodes/routes (default) ",action="store_true",dest="add")
+    parser.add_argument('-A', help="add specific route to peers",action="store_true",dest="add")
     parser.add_argument('-P', nargs='?', help="number of prepends",dest="prepend")
     parser.add_argument('-r', nargs='?', help="BGP route to be added",dest="route")
     parser.add_argument('--key', nargs='?', help="SSH key present on the testbed",dest="key", default= "~/.ssh/id_ed25519")
     parser.add_argument('--user', nargs='?', help="SSH user used to login on the testbed",dest="user", default="testbed")
-    parser.add_argument("-w", help="withdraw routes [-r] from a target [-t] or all nodes/routes (default) ", action="store_true",dest="withdraw")
+    parser.add_argument("-w", help="withdraw all routes for that peer", action="store_true",dest="withdraw")
     parser.add_argument("--nodes-with-announces", help="list the name of nodes with active prefix announcement", action="store_true",dest="listnodesannounce")
     return parser
 
@@ -221,10 +203,6 @@ def parser_args ():
 def evaluate_args():
     parser = parser_args()
     args = parser.parse_args()
-
-    # Default is just v4
-    if (not args.v6):
-        args.v4 = True
 
     if (args.debug):
         set_log_level('DEBUG')
@@ -287,6 +265,7 @@ if __name__ == '__main__':
     args = evaluate_args()
     logging.debug(args)
 
+    print("Started on [ {} ] Nodes".format(len(nodes)))
     logging.info("Started on [ %s ]", nodes)
 
     if (args.status):
@@ -309,13 +288,13 @@ if __name__ == '__main__':
                 print ("{},{},{}".format(node, neighbor['ip'], neighbor['status']))
     
     elif (args.withdraw):
-        logging.info("withdraw [%s] from [%s]", args.route, args.target)
+    
         for node in args.target:
             cmd = " exabgpcli show adj-rib out extensive"
             output_ = run_cmd(node,cmd)
-            output = parse_withdraw_routes(output_)
+            output = parse_routes(output_)
             if not output:
-                logging.info("there is nothing announced in {} to withdraw".format(node))
+                logging.info("there is nothing announced in {}".format(node))
 
             # announce found
             for announces in output:
@@ -331,6 +310,7 @@ if __name__ == '__main__':
                     if (':' in announces['ip']):
                         output = run_cmd(node,cmd)
                         logging.info(output)
+    
                 # run for both
                 else:
                     output = run_cmd(node,cmd)
