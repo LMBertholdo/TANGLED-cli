@@ -2,10 +2,25 @@
 # coding: utf-8
 ###############################################################################
 # Testbed CLI - interface for exabgpcli
-# Apr Fri 24 21:51:33 BST 2020
-# @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
-# @copyright paaddos.nl - Leandro Bertholdo - leandro.bertholdo@gmail.com
+#
+# Copyright (C) 2022 by University of Twente
+# Written by Joao Ceron <ceron@botlog.org> and  
+#            Leandro Bertholdo <leandro.bertholdo@gmail.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License,
+# version 2, as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 ###############################################################################
+# Apr Fri 24 21:51:33 BST 2019 - Initial version
 # 24Apr20 v0.22 - Included br-gru-anycast01
 # 23Sep20 v0.23 - changed poa and los
 # 24Sep20 v0.24 - added de-fra, us-sea, sg-sin
@@ -14,20 +29,10 @@
 # 22Oct20 v0.30 - added -w[all|route]
 # 28Nov20 v0.31 - garbage collection at paramiko (del ssh,stdin,stdout, stderr)
 # 19Jan21 v0.32 - error exception bug on paramiko 
-<<<<<<< HEAD
-#(UNRELEASED 0.32)
-
-###############################################################################
-version = 0.32
-=======
-# 15Nov21 v0.33 - error exception bug on paramiko and removed br-gig, jp-hnd
-
-
+# 15Nov21 v0.33 - deactivated jp-hnd and br-gig
 ###############################################################################
 version = 0.33
->>>>>>> 803a5dadb340687c224d3a25026cf54815250666
 verbose = False
-
 ###############################################################################
 ### Python modules
 import paramiko
