@@ -1,31 +1,9 @@
 #!/usr/bin/env python3
 ###############################################################################
-# Verfploeter CLI (VP-CLI.py)
-#
+# Verfploeter CLI 
+# Thu Jul  4 13:43:19 UTC 2019
 # @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
-# @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
-#
-# Copyright (C) 2022 by University of Twente
-# Written by Joao Ceron <ceron@botlog.org> and  
-#            Leandro Bertholdo <leandro.bertholdo@gmail.com>
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License,
-# version 2, as published by the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 ###############################################################################
-# Thu Jul  4 13:43:19 UTC 2019  Initial version
-# Thu Mar 18 14:12:14 UTC 2020  Version 0.9
-# Thu Sep 23 17:15:03 UTC 2020  Version 1.0
-# Thu Feb 10 09:47:47 UTC 2022  Version 1.1
 
 ###############################################################################
 ### Python modules
@@ -43,13 +21,14 @@ import importlib
 import logging
 import IP2Location
 #from multiprocessing import Pool
+import imp
 import multiprocessing
 import numpy as np
 import cursor
 ###############################################################################
 ### Program settings
 verbose = False
-version = 1.1
+version = 0.9
 program_name = os.path.basename(__file__)
 ###############################################################################
 ### Subrotines
@@ -61,7 +40,7 @@ def set_log_level(log_level=logging.INFO):
     :param level: level to be passed to logging (defaults to 'INFO')
     :type level: str
     """
-    importlib.reload(logging)
+    imp.reload(logging)
     logging.basicConfig(
             level=log_level,
 	    format='%(asctime)s.%(msecs)03d %(levelname)s - %(message)s', 
@@ -85,7 +64,6 @@ def parser_args ():
     parser.add_argument('-s','--source', nargs='?', help="Verfploeter source pinger node to be inserted as metadata")
     parser.add_argument('-b','--bgp', nargs='?', help="BGP policy to be inserted as metadata" )
     parser.add_argument('-w','--weight', nargs='+', help="File used to weight the /24. Use the SIDN load file.")
-    parser.add_argument('--filter', action="store_true" , help="Build a new file with the intersection of `weighted` and input file.")
     parser.add_argument("--csv", help="print server load distribution using csv", action="store_true")
 
     # TODO block and country
@@ -143,17 +121,18 @@ def animated_loading(flag):
     if (flag == 3):
         chars = "▖▘▝▗"
         msg = "finding geo info      "
+    cursor.hide()
+
     if (flag == 4):
         chars = "⣾⣽⣻⢿⡿⣟⣯⣷"
         msg = "saving dataframe      "
     cursor.hide()
 
     for char in chars:
+
         sys.stdout.write('\r'+msg+''+char)
         time.sleep(.1)
         sys.stdout.flush()
-
-    sys.stdout.write('\r')
     cursor.show()
 
 #------------------------------------------------------------------------------
@@ -164,6 +143,40 @@ def load_df (ret,file):
 #	df = pd.read_csv(file, sep=",", index_col=False, low_memory=False, skiprows=0, nrows=100)
 	df = pd.read_csv(file, sep=",", index_col=False, low_memory=False, skiprows=0)
 	ret.put(df) 
+
+#------------------------------------------------------------------------------
+# add metadata
+def insert_metadata(ret,df,args):
+
+    # add extra metadata info
+    # origin = node that has started the ping process
+    # bgp = current bgp announces
+    df['origin'] = args.source
+    df['bgp'] = args.bgp
+    ret.put(df) 
+
+#------------------------------------------------------------------------------
+# call metadata insertion
+def add_metadata(df,args):
+
+    ## check for metadata and pre-processing tasks
+    logging.info("inserting dataframe metadata")
+
+    # add extra metadata info
+    # origin = node that has started the ping process
+    # bgp = current bgp announces
+    df['origin'] = args.source
+    df['bgp'] = args.bgp
+ 
+    #ret = queue.Queue()
+    #the_process = threading.Thread(name='process', target=insert_metadata, args=(ret,df,args))
+    #the_process.start()
+    #while the_process.isAlive():
+    #	animated_loading(2) if not (args.quiet) else 0
+    #the_process.join()
+    #df = ret.get()
+
+    return(df)
 
 #------------------------------------------------------------------------------
 # add geo info in the dataframe
@@ -178,6 +191,8 @@ def ip2location_info(src_net, args,df):
     
     result = "{};{};{};{}".format(country_short,region,lat,lon)
     return  (result)
+
+
 
 #------------------------------------------------------------------------------
 # add geo  - threading
@@ -241,15 +256,14 @@ def bar(row):
     print ("{} | {} - {}%  {}".format( label.rjust(longest_label_length), count.rjust(longest_count_length),percent.rjust(3), bar ))
     return ()
 
-##------------------------------------------------------------------------------
-## save df 
-#def save_df(df,file):
-#
-#    outputfile = re.sub('.csv.*', '', args.file)+".csv.norm"
-#    df.to_csv(outputfile,index=False, compression="gzip")
-#
-#    ret.put(outputfile)
-#
+#------------------------------------------------------------------------------
+# save df - threading
+def save_df(ret,args,df):
+
+    outputfile = re.sub('.csv.*', '', args.file)+".csv.norm"
+    df.to_csv(outputfile,index=False, compression="gzip")
+    ret.put(outputfile)
+
 #------------------------------------------------------------------------------
 # load the dataframe and remove inconsistency
 def init_load(args):
@@ -261,7 +275,7 @@ def init_load(args):
     ret = queue.Queue()
     the_process = threading.Thread(name='process', target=load_df, args=(ret,file))
     the_process.start()
-    while the_process.is_alive():
+    while the_process.isAlive():
     	animated_loading(0) if not (args.quiet) else 0
     the_process.join()
     df = ret.get()
@@ -280,11 +294,8 @@ def init_load(args):
     ret = queue.Queue()
     the_process = threading.Thread(name='process', target=check_metadata_from_df, args=(ret,df,args))
     the_process.start()
-    while the_process.is_alive():
+    while the_process.isAlive():
     	animated_loading(1) if not (args.quiet) else 0
-    animated_loading(4)
-    #print ('\r')
-
     the_process.join()
     df = ret.get()
     
@@ -327,11 +338,6 @@ def evaluate_args():
         file = args.geo[0]
         if not (os.path.isfile(file)):
             print ("Geo database file not found: {}".format(file))
-            sys.exit(0)
-
-    if (args.filter):
-        if not (args.weight):
-            print ("You should provide the weight file as well.")
             sys.exit(0)
 
     if (args.weight):
@@ -409,16 +415,8 @@ if (args.normalize):
     # zip file
     logging.debug("saving dataframe ... {} done!".format(outputfile))
     logging.info("saving dataframe ... {} done!".format(outputfile))
-    outputfile = re.sub('.csv.*', '', args.file)+".csv.norm.gz"
-    print (outputfile)
-    df_load.to_csv(outputfile,index=False, compression="gzip")
+    print ("\r"+outputfile)
 
-elif (args.filter):
-
-    df_load = df[df.weight>0]
-    outputfile = re.sub('.csv.*', '', args.file)+".csv.load.gz"
-    print (outputfile)
-    df_load.to_csv(outputfile,index=False, compression="gzip")
 
 ## provide load distribution per site
 else:

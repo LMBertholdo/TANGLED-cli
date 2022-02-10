@@ -1,31 +1,9 @@
 #!/usr/bin/env python3
 ###############################################################################
-# Verfploeter CLI (VP-CLI.py)
-#
+# Verfploeter CLI 
+# Thu Jul  4 13:43:19 UTC 2019
 # @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
-# @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
-#
-# Copyright (C) 2022 by University of Twente
-# Written by Joao Ceron <ceron@botlog.org> and  
-#            Leandro Bertholdo <leandro.bertholdo@gmail.com>
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License,
-# version 2, as published by the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 ###############################################################################
-# Thu Jul  4 13:43:19 UTC 2019  Initial version
-# Thu Mar 18 14:12:14 UTC 2020  Version 0.9
-# Thu Sep 23 17:15:03 UTC 2020  Version 1.0
-# Thu Feb 10 09:47:47 UTC 2022  Version 1.1
 
 ###############################################################################
 ### Python modules
@@ -43,13 +21,14 @@ import importlib
 import logging
 import IP2Location
 #from multiprocessing import Pool
+#import imp
 import multiprocessing
 import numpy as np
 import cursor
 ###############################################################################
 ### Program settings
 verbose = False
-version = 1.1
+version = 1.0
 program_name = os.path.basename(__file__)
 ###############################################################################
 ### Subrotines
@@ -61,7 +40,7 @@ def set_log_level(log_level=logging.INFO):
     :param level: level to be passed to logging (defaults to 'INFO')
     :type level: str
     """
-    importlib.reload(logging)
+    imp.reload(logging)
     logging.basicConfig(
             level=log_level,
 	    format='%(asctime)s.%(msecs)03d %(levelname)s - %(message)s', 
@@ -143,17 +122,18 @@ def animated_loading(flag):
     if (flag == 3):
         chars = "▖▘▝▗"
         msg = "finding geo info      "
+    cursor.hide()
+
     if (flag == 4):
         chars = "⣾⣽⣻⢿⡿⣟⣯⣷"
         msg = "saving dataframe      "
     cursor.hide()
 
     for char in chars:
+
         sys.stdout.write('\r'+msg+''+char)
         time.sleep(.1)
         sys.stdout.flush()
-
-    sys.stdout.write('\r')
     cursor.show()
 
 #------------------------------------------------------------------------------
@@ -282,9 +262,6 @@ def init_load(args):
     the_process.start()
     while the_process.is_alive():
     	animated_loading(1) if not (args.quiet) else 0
-    animated_loading(4)
-    #print ('\r')
-
     the_process.join()
     df = ret.get()
     

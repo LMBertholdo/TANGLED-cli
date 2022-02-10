@@ -12,7 +12,13 @@
 # 10Oct20 v0.26 - added za-jnb br-gig
 # 13Oct20 v0.26 - commented br-gig
 # 22Oct20 v0.30 - added -w[all|route]
+# 28Nov20 v0.31 - garbage collection at paramiko (del ssh,stdin,stdout, stderr)
+# 19Jan21 v0.32 - error exception bug on paramiko 
+#(UNRELEASED 0.32)
+
 ###############################################################################
+version = 0.32
+verbose = False
 
 ###############################################################################
 ### Python modules
@@ -30,8 +36,6 @@ import cursor
 ###############################################################################
 ### Program settings
 
-verbose = False
-version = 0.30
 program_name = sys.argv[0][:-3]
 
 ### TESTBED NODES
@@ -79,14 +83,17 @@ def connect(node):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(ip, username=user)
-    except ssh_exception.NoValidConnectionsError as inst:
-        print("username not exists")
-    except ssh_exception.AuthenticationException as inst:
-        print("passwd not correct")
+    except paramiko.ssh_exception.NoValidConnectionsError as inst:
+        print("username [{}] not exists".format(user))
+    except paramiko.ssh_exception.AuthenticationException as inst:
+        print("-->> Key or password are not correct ({},{},{},{})".format(node.upper(),ip,user.upper(),key))
+        #print("-->> more info on except inst: [{}][{}][{}])".format(type(inst),inst,inst.args))
+    except paramiko.ssh_exception.BadHostKeyException as inst:
+        print("Unable to verify server's host key: {}".format(inst))
     except Exception as inst:
         print ("Could not connect in node {}".format(node.upper()))
         print ("Ignoring node {}".format(node.upper()))
-        print(inst)   
+        print("SSH exception:",type(inst),inst)
         return (None)
 
     return (ssh)
@@ -115,7 +122,11 @@ def run_cmd(node,cmd):
     shell.settimeout(3)
     stdin, stdout, stderr = ssh.exec_command(cmd)
     opt = stdout.readlines()
+
+    # Clean up elements - for some reason, garbage is not cleared at close() so need delete elements
     ssh.close()
+    del ssh, stdin, stdout, stderr
+
     return(opt)
 
 #------------------------------------------------------------------------------
