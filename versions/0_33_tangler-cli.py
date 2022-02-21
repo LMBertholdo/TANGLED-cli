@@ -2,37 +2,25 @@
 # coding: utf-8
 ###############################################################################
 # Testbed CLI - interface for exabgpcli
-#
-# Copyright (C) 2022 by University of Twente
-# Written by Joao Ceron <ceron@botlog.org> and  
-#            Leandro Bertholdo <leandro.bertholdo@gmail.com>
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License,
-# version 2, as published by the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+# Apr Fri 24 21:51:33 BST 2020
+# @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
+# @copyright paaddos.nl - Leandro Bertholdo - leandro.bertholdo@gmail.com
 ###############################################################################
-# Apr Fri 24 21:51:33 BST 2019 - Initial version
 # 24Apr20 v0.22 - Included br-gru-anycast01
 # 23Sep20 v0.23 - changed poa and los
 # 24Sep20 v0.24 - added de-fra, us-sea, sg-sin
 # 10Oct20 v0.26 - added za-jnb br-gig
+# 13Oct20 v0.26 - commented br-gig
 # 22Oct20 v0.30 - added -w[all|route]
 # 28Nov20 v0.31 - garbage collection at paramiko (del ssh,stdin,stdout, stderr)
 # 19Jan21 v0.32 - error exception bug on paramiko 
-# 15Nov21 v0.33 - deactivated jp-hnd and br-gig
-# 14Feb22 v0.34 - added peer/as info to csv output (multipeering site)
+# 15Nov21 v0.33 - error exception bug on paramiko and removed br-gig, jp-hnd
+
+
 ###############################################################################
-version = 0.34
+version = 0.33
 verbose = False
+
 ###############################################################################
 ### Python modules
 import paramiko
@@ -350,8 +338,6 @@ if __name__ == '__main__':
     
     # check all the announces for specific nodes
     elif (args.announces):
-        if (args.csv):
-            print ('site,prefix,peer_as,neighbor,attributes')
         for node in args.target:
             logging.info ("working on Announces of [ %s ]", format(node))
             cmd = " exabgpcli show adj-rib out extensive"
@@ -365,37 +351,41 @@ if __name__ == '__main__':
     
             if (not args.v4 and not args.v6):
                 print ("== {}".format(node)) if not (args.csv) else False
+                    
+
             if (args.v4):
                 if any("in-open ipv4" in s for s in output):
                     print ("== {}".format(node)) if not (args.csv) else False
+    
             if (args.v6):
                 if any("in-open ipv6" in s for s in output):
                     print ("== {}".format(node)) if not (args.csv) else False
              
             for line in (output):
+    
                 if  (args.v4):
                     if (" in-open ipv4" in line):
-                        route_search= re.search('neighbor\s+(.*)\s+local-ip+.*peer-as\s+(\d+)\s+router-id+.*in-open ipv\d\sunicast\s+(.*?)\s+next-hop self\s+(.*)',line,re.IGNORECASE)
+                        route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*?)\s+next-hop self\s+(.*)',line,re.IGNORECASE)
                         if (args.csv):
-                            print ("{},{},{},{},{}".format(node,route_search.group(3),route_search.group(2),route_search.group(1),route_search.group(4)))
+                            print ("{},{},{}".format(node,route_search.group(2),route_search.group(3)))
                         else:
-                            print ("neighbor {} prefix {} {} ".format(route_search.group(1),route_search.group(3),route_search.group(4)))
+                            print ("neighbor {} prefix {} {} ".format(route_search.group(1),route_search.group(2),route_search.group(3)))
 
                 if  (args.v6):
                     if (" in-open ipv6" in line):
-                        route_search = re.search('neighbor\s+(.*)\s+local-ip+.*peer-as\s+(\d+)\s+router-id+.*in-open ipv\d\sunicast\s+(.*?)\s+.*',line,re.IGNORECASE)
+                        route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*?)\s+next-hop self\s+(.*)',line,re.IGNORECASE)
                         if (args.csv):
-                            print ("{},{},{},{},{}".format(node,route_search.group(3),route_search.group(2),route_search.group(1),route_search.group(4)))
+                            print ("{},{},{}".format(node,route_search.group(2),route_search.group(3)))
                         else:
-                            print ("neighbor {} prefix {} {} ".format(route_search.group(1),route_search.group(3),route_search.group(4)))
+                            print ("neighbor {} prefix {} {} ".format(route_search.group(1),route_search.group(2),route_search.group(3)))
 
                         
                 if (not args.v4 and not args.v6):
                         route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*?)\s+next-hop self\s+(.*)',line,re.IGNORECASE)
                         if (args.csv):
-                            print ("{},{},{},{},{}".format(node,route_search.group(3),route_search.group(2),route_search.group(1),route_search.group(4)))
+                            print ("{},{},{}".format(node,route_search.group(2),route_search.group(3)))
                         else:
-                            print ("neighbor {} prefix {} {} ".format(route_search.group(1),route_search.group(3),route_search.group(4)))
+                            print ("neighbor {} prefix {} {} ".format(route_search.group(1),route_search.group(2),route_search.group(3)))
 
 
     # add route (prefix) in BGP
@@ -486,14 +476,13 @@ if __name__ == '__main__':
                 print ("No announces")
                 next
             for line in (output):
-                route_search = re.search('neighbor\s+(.*)\s+local-ip+.*peer-as\s+(\d+)\s+router-id+.*in-open ipv\d\sunicast\s+(.*?)\s+.*',line,re.IGNORECASE)
+                route_search = re.search('neighbor\s+(.*)\s+local-ip+.*in-open ipv\d\sunicast\s+(.*?)\s+.*',line,re.IGNORECASE)
                 result = {
                     "neighbor": route_search.group(1),
-                    "peer_as" : route_search.group(2),
-                    "prefix"  : route_search.group(3),
-                    "node"    : node
+                    "prefix" :  route_search.group(2),
+                    "node"   : node
                 }
-            result_array.append(result)
+                result_array.append(result)
     
         # build list with all the results
         sites = []
