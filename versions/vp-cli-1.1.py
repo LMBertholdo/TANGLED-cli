@@ -2,6 +2,9 @@
 ###############################################################################
 # Verfploeter CLI (VP-CLI.py)
 #
+# @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
+# @copyright sand-project.nl - Joao Ceron - ceron@botlog.org
+#
 # Copyright (C) 2022 by University of Twente
 # Written by Joao Ceron <ceron@botlog.org> and  
 #            Leandro Bertholdo <leandro.bertholdo@gmail.com>
@@ -21,10 +24,9 @@
 ###############################################################################
 # Thu Jul  4 13:43:19 UTC 2019  Initial version
 # Thu Mar 18 14:12:14 UTC 2020  Version 0.9
-# Thu Sep 23 17:15:03 UTC 2020  Version 1.0 
-# Thu Feb 10 09:47:47 UTC 2022  Version 1.1 
-# Wed Feb 16 12:48:24 UTC 2022  Version 1.2 #MP changed
-#
+# Thu Sep 23 17:15:03 UTC 2020  Version 1.0
+# Thu Feb 10 09:47:47 UTC 2022  Version 1.1
+
 ###############################################################################
 ### Python modules
 import os
@@ -40,15 +42,14 @@ from os import linesep
 import importlib
 import logging
 import IP2Location
+#from multiprocessing import Pool
 import multiprocessing
 import numpy as np
 import cursor
-from pandarallel import pandarallel
-
 ###############################################################################
 ### Program settings
 verbose = False
-version = 1.2
+version = 1.1
 program_name = os.path.basename(__file__)
 ###############################################################################
 ### Subrotines
@@ -121,6 +122,7 @@ def check_metadata_from_df(ret,df,args):
     df = df.drop(columns=['source_address','destination_address','meta_source_address',\
                 'meta_destination_address','task_id','transmit_time','receive_time'])
 
+
     if (args.debug):
         logging.debug("After removing inconsistency: \"%d\"", len(df))
     ret.put(df)
@@ -134,7 +136,7 @@ def animated_loading(flag):
         chars = "▁▂▃▄▅▆▇█▇▆▅▄▃▁"
     if (flag == 1 ):
         chars = "◢ ◣ ◤ ◥"
-        msg = "removing inconsistency"
+        msg = "removing incosistency "
     if (flag == 2):
         chars = "▖▘▝▗"
         msg = "inserting metadata    "
@@ -157,10 +159,12 @@ def animated_loading(flag):
 #------------------------------------------------------------------------------
 # load the dataframe 
 def load_df (ret,file):
-    logging.debug("loading the dataframe") 
-    # df = pd.read_csv(file, sep=",", index_col=False, low_memory=False, skiprows=0, nrows=100)
-    df = pd.read_csv(file, sep=",", index_col=False, low_memory=False, skiprows=0)
-    ret.put(df)
+
+	logging.debug("loading the dataframe") 
+#	df = pd.read_csv(file, sep=",", index_col=False, low_memory=False, skiprows=0, nrows=100)
+	df = pd.read_csv(file, sep=",", index_col=False, low_memory=False, skiprows=0)
+	ret.put(df) 
+
 #------------------------------------------------------------------------------
 # add geo info in the dataframe
 def ip2location_info(src_net, args,df):
@@ -203,24 +207,6 @@ def get_geo_info(params):
     df['longitude'] = df['src_net'].apply(f)   
     df = df.fillna(0) 
     return ([df, output_file])
-
-def get_ip2loc_data(net):
-    ''' Get ip2location data using ip2location functions. Use NET /24 as reference 
-        Returns country_short, region, latitude and longitude 
-    '''
-    # ipv = ip.split(".")
-    # ipv[3] = '0'
-    # net = '.'.join(ipv)
-    ip2location = IP2Location.IP2Location()
-    ip2location.open(ip2locationdb)
-    
-    cc = ip2location.get_country_short(net).replace(",","")
-    region = ip2location.get_region(net).replace(",","")
-    lat = ip2location.get_latitude(net)
-    lon = ip2location.get_longitude(net)
-    
-    #print (net, cc, region, lat, lon )
-    return pd.Series([cc, region, lat, lon])
 
 #------------------------------------------------------------------------------
 #
@@ -267,12 +253,11 @@ def bar(row):
 #------------------------------------------------------------------------------
 # load the dataframe and remove inconsistency
 def init_load(args):
-    logging.info("Starting init_load()")
 
     file = args.file
     ## load dataframe
     logging.info("reading the dataframe - file {}".format(file)) 
-    #logging.debug("reading the dataframe - file {}".format(file)) 
+    logging.debug("reading the dataframe - file {}".format(file)) 
     ret = queue.Queue()
     the_process = threading.Thread(name='process', target=load_df, args=(ret,file))
     the_process.start()
@@ -283,25 +268,26 @@ def init_load(args):
     
     # not enought lines
     if (df.size<3):
+
         sys.exit("{} has not enought lines to be processed".format(args.file))
         
     if not 'transmit_time' in df.columns:
         return (df)
 
     ## check for metadata and pre-processing tasks
+    logging.debug("checking dataframe metadata")
     logging.info("checking dataframe metadata")
     ret = queue.Queue()
     the_process = threading.Thread(name='process', target=check_metadata_from_df, args=(ret,df,args))
     the_process.start()
     while the_process.is_alive():
     	animated_loading(1) if not (args.quiet) else 0
-    animated_loading(4) if not (args.quiet) else 0
+    animated_loading(4)
     #print ('\r')
 
     the_process.join()
     df = ret.get()
     
-    logging.info("Returning from init_load()")
     return (df)
 
 
@@ -378,10 +364,6 @@ logging.debug("init")
 # load DF
 df = init_load(args)
 
-if (args.quiet):
-    pandarallel.initialize(verbose=0)
-else:
-    pandarallel.initialize(progress_bar=True, verbose=1)
 
 # add weight 
 if (args.weight):
@@ -400,28 +382,28 @@ if (args.normalize):
 
     ## check for metadata and pre-processing tasks
     logging.info("saving normalized file") 
+    logging.debug("saving normalized file")
     
     # geo is not specify dont do anything
     if not (args.geo):
         logging.debug("no geo database provided")
         print ("In file converstion (-n) you must pass the geolocation database")
         sys.exit(1)
-
-    # Changed multiprocessing - linux/macos issues (Leandro)    
-    # chunksize = 100
-    print ("\rgeolocating the dataframe    ") if not args.quiet else 0
-    # pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+    
+    chunksize = 100
+    print ("\r geolocating the dataframe   ")
+    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     logging.info('Starting MP')
 
     outputfile = re.sub('.csv.*', '', args.file)+".csv.norm"
     ip2locationdb = args.geo[0]
   
-    # for df_split in np.array_split(df, chunksize):
-    #     result = pool.apply_async(get_geo_info, args=[(df_split,outputfile,ip2locationdb)], callback=collect_results)
-    # pool.close()
-    # pool.join()
+    for df_split in np.array_split(df, chunksize):
+        result = pool.apply_async(get_geo_info, args=[(df_split,outputfile,ip2locationdb)], callback=collect_results)
+    pool.close()
+    pool.join()
 
-    df[['country_ip2location','region','latitude','longitude']]=df['src_net'].parallel_apply(get_ip2loc_data)
+    logging.info('Done MP')
     logging.debug('Done MP')
 
     # zip file
@@ -429,10 +411,10 @@ if (args.normalize):
     logging.info("saving dataframe ... {} done!".format(outputfile))
     outputfile = re.sub('.csv.*', '', args.file)+".csv.norm.gz"
     print (outputfile)
-    df.to_csv(outputfile,index=False, compression="gzip")
+    df_load.to_csv(outputfile,index=False, compression="gzip")
 
 elif (args.filter):
-    logging.info("Filtering ....")
+
     df_load = df[df.weight>0]
     outputfile = re.sub('.csv.*', '', args.file)+".csv.load.gz"
     print (outputfile)
@@ -440,8 +422,8 @@ elif (args.filter):
 
 ## provide load distribution per site
 else:
+
     # new stats df 
-    logging.info("Calculating stats...")
     if (args.weight):
         logging.debug("Stats considering the weight")
         df_summary = df[df.weight>0].catchment.value_counts()
@@ -449,6 +431,7 @@ else:
         df_summary = df.catchment.value_counts()
 
     if (args.hitlist):
+
         logging.debug ("add infos about unknown data [hitlist - received packages]")
         # total lines in the hitlist
         total_lines_hitlist = len(open(args.hitlist[0]).readlines())
@@ -461,23 +444,18 @@ else:
     df_summary['percent'] = (df_summary['counts']/df_summary['counts'].sum()).mul(100).round(1).astype(int)
 
     if (args.csv):
-        logging.info("Generating CSV stats...")
-        
-        print ("#policy,{}".format(args.bgp))
-        print ("#timestamp,{}".format(int(time.time())))
-        if (args.hitlist):
-            print ("#hitlist,{}",args.hitlist)
-        else:
-            print ("#hitlist,not_provided")
-        if (args.weight):
-            print ("#weight assigned")
 
         header =  (','.join([i for i in df_summary.columns.tolist()]))
-        print (header)
+        print ("#timestamp,{}".format(int(time.time())))
+        print ("#"+header)
+        if not (args.hitlist):
+            print ("#hitllist was not provided")
+        if (args.weight):
+            print ("#weight assigned")
         print (df_summary.to_csv(index=False,header=False))
 
     else:
-        logging.info("Generating regular stats...")
+
         # print ascii bar chart
         max_value = df_summary.percent.max()
         increment = max_value / 25
@@ -485,9 +463,7 @@ else:
         longest_count_length = len(df_summary['counts'].max().astype(str))
         ret  = df_summary.apply(bar, axis=1)
 
+
 if not (args.quiet):
     cursor.show()
-
-logging.info("Done! Exiting...")
-
 sys.exit(0)
