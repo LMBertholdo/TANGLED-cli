@@ -30,6 +30,7 @@
 # 19Jan21 v0.32 - error exception bug on paramiko 
 # 15Nov21 v0.33 - deactivated jp-hnd and br-gig
 # 14Feb22 v0.34 - added peer/as info to csv output (multipeering site)
+# 24Feb22 V0.35 - Improved error handling 
 ###############################################################################
 version = 0.35
 verbose = False
@@ -46,6 +47,7 @@ from os import linesep
 import importlib as imp
 import signal
 import cursor
+import time
 ###############################################################################
 ### Program settings
 
@@ -82,33 +84,38 @@ def connect(node):
         :param: 
                 node - string that is mapped to an IP address
     """
-
     user  = args.user
     ip = nodes.get(node)
     if not ip:
-        print ("node: {}, not found!".format(node))
+        print ("node: {}, not found! DNS maybe?".format(node))
         print ("check available nodes")
-     
+        sys.exit(1)
+    
     key = args.key
-    logging.info("connect:: user[%s] ip[%s] key[%s]", user, ip, key)
+    logging.info(f"connect:: user[{user}] ip[{ip}] key[{key}]")
 
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(ip, username=user, timeout=10)
-    except paramiko.ssh_exception.NoValidConnectionsError as inst:
-        print("username [{}] not exists".format(user))
-    except paramiko.ssh_exception.AuthenticationException as inst:
-        print("-->> Key or password are not correct ({},{},{},{})".format(node.upper(),ip,user.upper(),key))
-        #print("-->> more info on except inst: [{}][{}][{}])".format(type(inst),inst,inst.args))
-    except paramiko.ssh_exception.BadHostKeyException as inst:
-        print("Unable to verify server's host key: {}".format(inst))
-    except Exception as inst:
-        print ("Could not connect in node {}".format(node.upper()))
-        print ("Ignoring node {}".format(node.upper()))
-        print("SSH exception:",type(inst),inst)
-        return (None)
 
+    except paramiko.ssh_exception.NoValidConnectionsError as inst:
+        logging.exception(f"ERROR: username [{user}] do not exist!")
+        sys.exit(1)    
+
+    except paramiko.ssh_exception.AuthenticationException as inst:
+        logging.exception(f"ERROR: Key or password are not correct {node.upper()},{ip},{user},{key}")
+        sys.exit(1)
+
+    except paramiko.ssh_exception.BadHostKeyException as inst:
+        logging.exception(f"ERROR: Unable to verify server's host key: {inst}")
+        sys.exit(1)
+
+    except Exception as inst:
+        logging.exception (f"ERROR: Could not connect in node {node.upper()}")
+        logging.exception (f"ERROR: Ignoring node {node}")
+        logging.exception (f"ERROR: SSH exception: {type(inst)},{inst}")
+        return (None)
     return (ssh)
 
 #------------------------------------------------------------------------------
@@ -125,12 +132,18 @@ def run_cmd(node,cmd):
     """
     logging.info(f"run_cmd:: [{node}] ==> [{cmd}]")
     ssh = connect(node)
-    logging.info("run_cmd::after connect")
+    
     if (not ssh):
-        return (None)
+        logging.exception(f"run_cmd:: [{node}] SSH Failed]")
+        logging.exception(f"run_cmd:: [{node}] Trying one more time after 15sec! ]")
+        time.sleep(15)
+        ssh = connect(node)
+        if (not ssh):
+            return (None)
 
+    logging.info("run_cmd:: invoke_shell")
     shell = ssh.invoke_shell()
-    logging.info("run_cmd::after invoke_shell")
+    
 
     shell.settimeout(0.0)
     stdin, stdout, stderr = ssh.exec_command(cmd)
@@ -347,23 +360,23 @@ if __name__ == '__main__':
                 # announce found
                 for announces in output:
                     cmd = "exabgpcli neighbor {} {} ".format(announces['ip'],announces['cmd'])
-                    print (cmd)
+                    logging.info(f"withdraw: {output}")
                     if (args.v4):
                         if (':' not in announces['ip']):
                             output = run_cmd(node,cmd)
-                            logging.info(output)
+                            logging.debug(output)
                             print (f"{cmd} IPv4 withdraw... done!")
 
                     elif (args.v6):
                         if (':' in announces['ip']):
                             output = run_cmd(node,cmd)
-                            logging.info(output)
+                            logging.debug(output)
                             print (f"{cmd} IPv6 withdraw... done!")
 
                     # run for both
                     else:
                         output = run_cmd(node,cmd)
-                        logging.info(output)
+                        logging.debug(output)
                         print (f"{cmd} IPv4/6 withdraw... done!")
     
     # check all the announces for specific nodes
