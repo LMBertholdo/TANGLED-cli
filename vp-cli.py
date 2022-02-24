@@ -466,7 +466,7 @@ else:
         print ("#policy,{}".format(args.bgp))
         print ("#timestamp,{}".format(int(time.time())))
         if (args.hitlist):
-            print ("#hitlist,{}",args.hitlist)
+            print (f"#hitlist,{args.hitlist}")
         else:
             print ("#hitlist,not_provided")
         if (args.weight):
