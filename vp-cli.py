@@ -337,6 +337,9 @@ def evaluate_args():
         set_log_level('INFO')
         args.quiet=True
  
+    if (args.csv):
+        args.quiet=True
+
     if (args.geo):
         file = args.geo[0]
         if not (os.path.isfile(file)):
@@ -404,7 +407,7 @@ if (args.normalize):
     # geo is not specify dont do anything
     if not (args.geo):
         logging.debug("no geo database provided")
-        print ("In file converstion (-n) you must pass the geolocation database")
+        print ("In file conversion (-n) you must pass the geolocation database")
         sys.exit(1)
 
     # Changed multiprocessing - linux/macos issues (Leandro)    
@@ -462,8 +465,7 @@ else:
 
     if (args.csv):
         logging.info("Generating CSV stats...")
-        
-        print ("#policy,{}".format(args.bgp))
+        print ("#policy,{}".format(args.bgp.replace('"','')))
         print ("#timestamp,{}".format(int(time.time())))
         if (args.hitlist):
             print (f"#hitlist,{args.hitlist}")
